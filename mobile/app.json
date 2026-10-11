@@ -1,0 +1,35 @@
+{
+  "expo": {
+    "name": "제때약",
+    "slug": "jette-yak",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "backgroundColor": "#8b3e4b",
+      "resizeMode": "contain"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.jetteyak.app"
+    },
+    "android": {
+      "package": "com.jetteyak.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#8b3e4b",
+        "foregroundImage": "./assets/icon.png"
+      },
+      "permissions": [
+        "INTERNET",
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "READ_MEDIA_IMAGES"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    }
+  }
+}
