@@ -10,8 +10,10 @@ import {
   ActivityIndicator,
   Text,
   TouchableOpacity,
+  Alert,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
+import * as ImagePicker from 'expo-image-picker';
 
 const APP_URL = 'https://34-64-159-225.sslip.io';
 const THEME_COLOR = '#8b3e4b';
@@ -21,6 +23,20 @@ export default function App() {
   const [canGoBack, setCanGoBack] = useState(false);
   const [hasError, setHasError] = useState(false);
   const lastBackPressed = useRef(0);
+
+  // 앱 시작 시 카메라 및 앨범 권한 사전 요청
+  useEffect(() => {
+    (async () => {
+      if (Platform.OS !== 'web') {
+        try {
+          await ImagePicker.requestCameraPermissionsAsync();
+          await ImagePicker.requestMediaLibraryPermissionsAsync();
+        } catch (err) {
+          console.warn('Permission request error:', err);
+        }
+      }
+    })();
+  }, []);
 
   // 안드로이드 하드웨어 뒤로가기 버튼 처리
   const handleBackPress = useCallback(() => {
@@ -49,6 +65,70 @@ export default function App() {
       return () => backHandler.remove();
     }
   }, [handleBackPress]);
+
+  // 웹뷰로부터 네이티브 카메라/앨범 요청 수신 처리
+  const handleMessage = async (event) => {
+    try {
+      const data = JSON.parse(event.nativeEvent.data);
+
+      if (data.type === 'OPEN_CAMERA') {
+        const { status } = await ImagePicker.requestCameraPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert('권한 필요', '처방전 촬영을 위해 카메라 권한을 허용해 주세요.');
+          return;
+        }
+
+        const result = await ImagePicker.launchCameraAsync({
+          allowsEditing: false,
+          quality: 0.8,
+          base64: true,
+        });
+
+        if (!result.canceled && result.assets && result.assets[0]) {
+          const asset = result.assets[0];
+          const mime = asset.mimeType || 'image/jpeg';
+          const b64 = asset.base64;
+          const fileName = asset.fileName || 'camera_rx.jpg';
+          const jsCode = `
+            if (window.__onNativeImageReceived) {
+              window.__onNativeImageReceived("data:${mime};base64,${b64}", "${fileName}");
+            }
+            true;
+          `;
+          webViewRef.current?.injectJavaScript(jsCode);
+        }
+      } else if (data.type === 'OPEN_GALLERY') {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert('권한 필요', '사진 선택을 위해 미디어 라이브러리 권한을 허용해 주세요.');
+          return;
+        }
+
+        const result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          allowsEditing: false,
+          quality: 0.8,
+          base64: true,
+        });
+
+        if (!result.canceled && result.assets && result.assets[0]) {
+          const asset = result.assets[0];
+          const mime = asset.mimeType || 'image/jpeg';
+          const b64 = asset.base64;
+          const fileName = asset.fileName || 'gallery_rx.jpg';
+          const jsCode = `
+            if (window.__onNativeImageReceived) {
+              window.__onNativeImageReceived("data:${mime};base64,${b64}", "${fileName}");
+            }
+            true;
+          `;
+          webViewRef.current?.injectJavaScript(jsCode);
+        }
+      }
+    } catch (err) {
+      console.warn('onMessage error:', err);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -88,7 +168,6 @@ export default function App() {
           allowsFullscreenVideo={true}
           mediaPlaybackRequiresUserAction={false}
           mixedContentMode="compatibility"
-          // 사진 첨부 및 카메라 촬영 지원
           allowFileAccess={true}
           allowFileAccessFromFileURLs={true}
           allowUniversalAccessFromFileURLs={true}
@@ -99,6 +178,7 @@ export default function App() {
           javaScriptCanOpenWindowsAutomatically={true}
           originWhitelist={['*']}
           applicationNameForUserAgent="JetteYakApp"
+          onMessage={handleMessage}
         />
       )}
     </SafeAreaView>

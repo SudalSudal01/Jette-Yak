@@ -57,6 +57,23 @@ export default function PrescriptionTab({
     setRxPreview(objectUrl);
   };
 
+  // React Native WebView 네이티브 카메라/갤러리 촬영 수신 리스너
+  useEffect(() => {
+    window.__onNativeImageReceived = async (dataUrl, fileName) => {
+      try {
+        const res = await fetch(dataUrl);
+        const blob = await res.blob();
+        const file = new File([blob], fileName || 'prescription_camera.jpg', { type: blob.type || 'image/jpeg' });
+        handleFileSelectDirect(file);
+      } catch (err) {
+        console.error('Failed to parse native image:', err);
+      }
+    };
+    return () => {
+      delete window.__onNativeImageReceived;
+    };
+  }, []);
+
   const handleRxFileSelect = (e) => {
     const file = e.target.files?.[0];
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -209,11 +226,15 @@ export default function PrescriptionTab({
                 </span>
                 <div className="dropzone-btn-group">
                   <label
-                    htmlFor="rx-file-input"
+                    htmlFor={typeof window !== 'undefined' && window.ReactNativeWebView ? undefined : 'rx-file-input'}
                     className="dropzone-browse-btn"
                     onClick={(e) => {
                       e.stopPropagation();
-                      fileInputRef.current?.click();
+                      if (typeof window !== 'undefined' && window.ReactNativeWebView) {
+                        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'OPEN_GALLERY' }));
+                      } else {
+                        fileInputRef.current?.click();
+                      }
                     }}
                   >
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="16" height="16" strokeWidth="2">
@@ -225,11 +246,15 @@ export default function PrescriptionTab({
                   </label>
                   {isMobileDevice && (
                     <label
-                      htmlFor="rx-camera-input"
+                      htmlFor={typeof window !== 'undefined' && window.ReactNativeWebView ? undefined : 'rx-camera-input'}
                       className="dropzone-camera-btn"
                       onClick={(e) => {
                         e.stopPropagation();
-                        cameraInputRef.current?.click();
+                        if (typeof window !== 'undefined' && window.ReactNativeWebView) {
+                          window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'OPEN_CAMERA' }));
+                        } else {
+                          cameraInputRef.current?.click();
+                        }
                       }}
                     >
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="16" height="16" strokeWidth="2">
