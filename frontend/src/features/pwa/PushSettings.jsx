@@ -8,7 +8,19 @@ export default function PushSettings({ push, accountEnabled, accountSaving = fal
   const [feedback, setFeedback] = useState('');
   if (!push) return null;
   // 커뮤니티 전송 테이블 준비 여부는 복약 푸시 연결과 별개. 구서버의 필드 누락도 연결을 막지 않음
-  const isNativeApp = typeof window !== 'undefined' && Boolean(window.ReactNativeWebView);
+  const checkNativeBridge = () => typeof window !== 'undefined' && Boolean(window.ReactNativeWebView || window.__isReactNativeApp);
+  const [isNativeApp, setIsNativeApp] = useState(checkNativeBridge);
+
+  // 컴포넌트 마운트 후 약간의 딜레이로 ReactNativeWebView가 주입되었는지 재확인
+  useState(() => {
+    if (typeof window !== 'undefined') {
+      const timer = setTimeout(() => {
+        if (checkNativeBridge()) setIsNativeApp(true);
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  });
+
   const [nativeActive, setNativeActive] = useState(() => {
     try { return localStorage.getItem('native_push_active') === 'true'; } catch { return false; }
   });
@@ -19,26 +31,32 @@ export default function PushSettings({ push, accountEnabled, accountSaving = fal
 
   const run = async action => {
     setFeedback('');
-    if (isNativeApp) {
+    const hasBridge = typeof window !== 'undefined' && Boolean(window.ReactNativeWebView || window.__isReactNativeApp);
+
+    if (hasBridge) {
       if (action === 'enable') {
         try { localStorage.setItem('native_push_active', 'true'); } catch {}
         setNativeActive(true);
-        window.ReactNativeWebView.postMessage(JSON.stringify({
-          type: 'SHOW_NOTIFICATION',
-          title: '제때약 복약 알림 연결 완료 💊',
-          body: '스마트폰 네이티브 알림이 활성화되었습니다! 복약 시간에 맞춰 알려드려요.',
-        }));
+        if (window.ReactNativeWebView) {
+          window.ReactNativeWebView.postMessage(JSON.stringify({
+            type: 'SHOW_NOTIFICATION',
+            title: '제때약 복약 알림 연결 완료 💊',
+            body: '스마트폰 네이티브 알림이 활성화되었습니다! 복약 시간에 맞춰 알려드려요.',
+          }));
+        }
         setFeedback('이 기기의 네이티브 복약 알림을 켰어요. [테스트 알림 보내기]로 확인해 보세요!');
       } else if (action === 'disable') {
         try { localStorage.removeItem('native_push_active'); } catch {}
         setNativeActive(false);
         setFeedback('이 기기의 복약 알림을 껐어요.');
       } else if (action === 'test') {
-        window.ReactNativeWebView.postMessage(JSON.stringify({
-          type: 'SHOW_NOTIFICATION',
-          title: '제때약 복약 알림 테스트 🔔',
-          body: '스마트폰 상단 알림 바에 정상적으로 도착했습니다! 알림을 탭하면 앱으로 이동해요.',
-        }));
+        if (window.ReactNativeWebView) {
+          window.ReactNativeWebView.postMessage(JSON.stringify({
+            type: 'SHOW_NOTIFICATION',
+            title: '제때약 복약 알림 테스트 🔔',
+            body: '스마트폰 상단 알림 바에 정상적으로 도착했습니다! 알림을 탭하면 앱으로 이동해요.',
+          }));
+        }
         setFeedback('스마트폰 상단 알림 바에 테스트 알림을 전송했어요!');
       }
       return;
@@ -71,7 +89,7 @@ export default function PushSettings({ push, accountEnabled, accountSaving = fal
     <div className="device-push-actions">
       {isCurrentSubscribed ? <button type="button" onClick={() => run('disable')} disabled={disabled}>{push.busy === 'disable' ? '해제 중…' : '이 기기 알림 끄기'}</button>
         : <button type="button" className="device-push-primary" onClick={() => run('enable')} disabled={disabled || unavailable || !accountEnabled}>{push.busy === 'enable' ? '알림 연결 중…' : '이 기기 알림 켜기'}</button>}
-      <button type="button" onClick={() => run('test')} disabled={disabled || !isCurrentActive}>{push.busy === 'test' ? '알림 보내는 중…' : '테스트 알림 보내기'}</button>
+      <button type="button" onClick={() => run('test')} disabled={disabled}>{push.busy === 'test' ? '알림 보내는 중…' : '테스트 알림 보내기'}</button>
       {!isNativeApp && (push.error || (push.config && !push.config.enabled)) && <button type="button" onClick={push.refresh} disabled={disabled}>설정 다시 확인</button>}
     </div>
     {feedback && <p className="device-push-feedback" role="status">{feedback}</p>}

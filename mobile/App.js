@@ -101,11 +101,25 @@ export default function App() {
 
       // 1. 네이티브 알림 띄우기
       if (data.type === 'SHOW_NOTIFICATION') {
+        if (Platform.OS === 'android') {
+          ToastAndroid.show(`${data.title || '알림'}: ${data.body || ''}`, ToastAndroid.LONG);
+        }
+
+        const perm = await Notifications.getPermissionsAsync();
+        if (!perm.granted) {
+          const req = await Notifications.requestPermissionsAsync();
+          if (!req.granted) {
+            Alert.alert('알림 권한 필요', '스마트폰 [설정 > 애플리케이션 > Expo Go > 알림]에서 알림을 켜주세요.');
+            return;
+          }
+        }
+
         await Notifications.scheduleNotificationAsync({
           content: {
             title: data.title || '제때약 알림',
             body: data.body || '확인할 복약 일정이 있습니다.',
-            sound: 'default',
+            sound: true,
+            vibrate: [0, 250, 250, 250],
             priority: Notifications.AndroidNotificationPriority.MAX,
             channelId: NOTIFICATION_CHANNEL_ID,
           },
@@ -222,6 +236,10 @@ export default function App() {
           javaScriptCanOpenWindowsAutomatically={true}
           originWhitelist={['*']}
           applicationNameForUserAgent="JetteYakApp"
+          injectedJavaScriptBeforeContentLoaded={`
+            window.__isReactNativeApp = true;
+            true;
+          `}
           onMessage={handleMessage}
         />
       )}
