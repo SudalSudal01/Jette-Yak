@@ -1,0 +1,49 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: jette-yak-backend
+    restart: always
+    environment:
+      - TZ=Asia/Seoul
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-3.1-flash-lite}
+      - DATA_GO_KR_SERVICE_KEY=${DATA_GO_KR_SERVICE_KEY:-}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - jette-yak-net
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: jette-yak-frontend
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    depends_on:
+      - backend
+    networks:
+      - jette-yak-net
+
+  certbot:
+    image: certbot/certbot
+    container_name: jette-yak-certbot
+    restart: unless-stopped
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    entrypoint: ""
+    command: /bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'
+    networks:
+      - jette-yak-net
+
+networks:
+  jette-yak-net:
+    driver: bridge

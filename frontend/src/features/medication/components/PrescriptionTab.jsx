@@ -57,6 +57,23 @@ export default function PrescriptionTab({
     setRxPreview(objectUrl);
   };
 
+  // React Native WebView 네이티브 카메라/갤러리 촬영 수신 리스너
+  useEffect(() => {
+    window.__onNativeImageReceived = async (dataUrl, fileName) => {
+      try {
+        const res = await fetch(dataUrl);
+        const blob = await res.blob();
+        const file = new File([blob], fileName || 'prescription_camera.jpg', { type: blob.type || 'image/jpeg' });
+        handleFileSelectDirect(file);
+      } catch (err) {
+        console.error('Failed to parse native image:', err);
+      }
+    };
+    return () => {
+      delete window.__onNativeImageReceived;
+    };
+  }, []);
+
   const handleRxFileSelect = (e) => {
     const file = e.target.files?.[0];
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -208,7 +225,18 @@ export default function PrescriptionTab({
                     : '파일을 여기에 끌어다 놓거나 아래 버튼으로 선택 (최대 15MB)'}
                 </span>
                 <div className="dropzone-btn-group">
-                  <label htmlFor="rx-file-input" className="dropzone-browse-btn">
+                  <label
+                    htmlFor={typeof window !== 'undefined' && window.ReactNativeWebView ? undefined : 'rx-file-input'}
+                    className="dropzone-browse-btn"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (typeof window !== 'undefined' && window.ReactNativeWebView) {
+                        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'OPEN_GALLERY' }));
+                      } else {
+                        fileInputRef.current?.click();
+                      }
+                    }}
+                  >
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="16" height="16" strokeWidth="2">
                       <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
                       <circle cx="8.5" cy="8.5" r="1.5" />
@@ -217,7 +245,18 @@ export default function PrescriptionTab({
                     {isMobileDevice ? '사진 앨범 / 파일 첨부' : '사진 파일 선택'}
                   </label>
                   {isMobileDevice && (
-                    <label htmlFor="rx-camera-input" className="dropzone-camera-btn">
+                    <label
+                      htmlFor={typeof window !== 'undefined' && window.ReactNativeWebView ? undefined : 'rx-camera-input'}
+                      className="dropzone-camera-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (typeof window !== 'undefined' && window.ReactNativeWebView) {
+                          window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'OPEN_CAMERA' }));
+                        } else {
+                          cameraInputRef.current?.click();
+                        }
+                      }}
+                    >
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="16" height="16" strokeWidth="2">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
                         <circle cx="12" cy="13" r="4" />

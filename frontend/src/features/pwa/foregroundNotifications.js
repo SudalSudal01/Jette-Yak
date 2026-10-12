@@ -4,6 +4,17 @@ const SERVICE_WORKER_PATH = '/sw.js';
 // 열린 앱의 알림만 표시하고 권한 요청은 사용자 클릭 핸들러에 맡김
 export async function showForegroundNotification(title, options = {}, browser = globalThis) {
   try {
+    // React Native WebView 환경인 경우 네이티브 푸시 알림으로 즉시 전달
+    if (browser.ReactNativeWebView) {
+      browser.ReactNativeWebView.postMessage(JSON.stringify({
+        type: 'SHOW_NOTIFICATION',
+        title: title || '제때약 복약 알림',
+        body: options?.body || '확인할 복약 알림이 있어요.',
+        data: options?.data || {}
+      }));
+      return true;
+    }
+
     const NotificationApi = browser.Notification;
     if (!NotificationApi || NotificationApi.permission !== 'granted') return false;
 
