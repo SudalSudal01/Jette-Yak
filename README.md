@@ -5,7 +5,8 @@
 - 팀 원본: [https://github.com/jws909/Jette-Yak](https://github.com/jws909/Jette-Yak)
 - 개인 GitHub: [SudalSudal01](https://github.com/SudalSudal01)
 
-- 팀 개발 기간: 2.5주
+- 팀 개발 기간: 2026.08.20 ~ 2026.09.08
+- 팀 인원: 5명
 - 본인 담당: **AI 상담 챗봇 · 커뮤니티 · 내 약 관리 · 결과 발표**
 - 기술: Java 21, Spring MVC, MyBatis, Oracle, React, Gemini API
 
